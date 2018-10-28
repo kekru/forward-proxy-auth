@@ -13,3 +13,4 @@ forward-proxy-auth
 *.out
 
 vendor
+.vscode
