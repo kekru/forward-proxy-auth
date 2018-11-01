@@ -1,7 +1,9 @@
-package main
+package jwtutil
 
 import (
 	"time"
+
+	"github.com/kekru/forward-proxy-auth/model"
 
 	"github.com/dgrijalva/jwt-go"
 	log "github.com/sirupsen/logrus"
@@ -14,11 +16,11 @@ type JwtUtil struct {
 }
 
 type ForwardProxyClaims struct {
-	*User
+	*model.User
 	jwt.StandardClaims
 }
 
-func (jwtUtil *JwtUtil) validateToken(tokenString string) (user *User, expiryTime time.Time, err error) {
+func (jwtUtil *JwtUtil) ValidateToken(tokenString string) (user *model.User, expiryTime time.Time, err error) {
 
 	token, err := jwt.ParseWithClaims(tokenString, &ForwardProxyClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return jwtUtil.HmacSigningKey, nil
@@ -31,7 +33,7 @@ func (jwtUtil *JwtUtil) validateToken(tokenString string) (user *User, expiryTim
 	return nil, time.Time{}, err
 }
 
-func (jwtUtil *JwtUtil) createToken(user *User) (tokenString string, expiryTime time.Time, err error) {
+func (jwtUtil *JwtUtil) CreateToken(user *model.User) (tokenString string, expiryTime time.Time, err error) {
 
 	expiryTime = time.Now().UTC().Add(time.Second * time.Duration(jwtUtil.ExpireSeconds))
 

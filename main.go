@@ -6,6 +6,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/kekru/forward-proxy-auth/authenticator"
+	"github.com/kekru/forward-proxy-auth/jwtutil"
+	"github.com/kekru/forward-proxy-auth/model"
+
 	log "github.com/sirupsen/logrus"
 
 	//"encoding/base64"
@@ -13,32 +17,25 @@ import (
 )
 
 type Authenticator interface {
-	Authenticate(username string, password string) (user *User, err error)
+	Authenticate(username string, password string) (user *model.User, err error)
 }
-
-type User struct {
-	Name   string   `json:"name"`
-	Email  string   `json:"email"`
-	Groups []string `json:"groups"`
-}
-
 type UserResponse struct {
-	User       *User  `json:"user"`
-	ExpiryTime string `json:"expirytime"`
+	User       *model.User `json:"user"`
+	ExpiryTime string      `json:"expirytime"`
 }
 
-var jwtUtil *JwtUtil
+var jwtUtil *jwtutil.JwtUtil
 var authenticators []Authenticator
 
 func main() {
 	log.SetLevel(log.DebugLevel)
 
-	jwtUtil = &JwtUtil{
+	jwtUtil = &jwtutil.JwtUtil{
 		ExpireSeconds:  60 * 10,
 		HmacSigningKey: []byte("Secret123"),
 		Issuer:         "forward-proxy-auth",
 	}
-	textfileAuth := &TextfileAuth{}
+	textfileAuth := &authenticator.TextfileAuth{}
 	authenticators = append(authenticators, textfileAuth)
 
 	router := mux.NewRouter().StrictSlash(true)
@@ -47,12 +44,12 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
 
-func writeAuthenticationResponseHeaders(w http.ResponseWriter, user *User) {
+func writeAuthenticationResponseHeaders(w http.ResponseWriter, user *model.User) {
 	w.Header().Set("X-Authenticated-User", user.Name)
 	w.Header().Set("X-Authenticated-User-Mail", user.Email)
 }
 
-func writeUserResponse(w http.ResponseWriter, user *User, expiryTime time.Time) {
+func writeUserResponse(w http.ResponseWriter, user *model.User, expiryTime time.Time) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	userResponse := &UserResponse{
@@ -71,7 +68,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 	// try to extraxct user from token
 	cookieToken, err := r.Cookie("token")
 	if err == nil {
-		user, expiryTime, err := jwtUtil.validateToken(cookieToken.Value)
+		user, expiryTime, err := jwtUtil.ValidateToken(cookieToken.Value)
 
 		if err == nil {
 			writeAuthenticationResponseHeaders(w, user)
@@ -96,7 +93,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// create token for authenticated user
-	token, expiryTime, err := jwtUtil.createToken(user)
+	token, expiryTime, err := jwtUtil.CreateToken(user)
 
 	if err != nil {
 		log.Errorf("Could not create token for User %s, %s", user.Name, err)
@@ -122,7 +119,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func login(r *http.Request) (user *User, err error) {
+func login(r *http.Request) (user *model.User, err error) {
 	username, password, authOK := r.BasicAuth()
 
 	if !authOK {
