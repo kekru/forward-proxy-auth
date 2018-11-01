@@ -14,9 +14,9 @@ func (textfileAuth *TextfileAuth) Authenticate(username string, password string)
 	if username == "admin" && password == "secret" {
 
 		user = &User{
-			name:   "admin",
-			email:  "admin@example.com",
-			groups: []string{"ab", "cd"},
+			Name:   "admin",
+			Email:  "admin@example.com",
+			Groups: []string{"ab", "cd"},
 		}
 		log.Debug("User ", user)
 		err = nil

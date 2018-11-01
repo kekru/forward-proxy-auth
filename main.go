@@ -1,8 +1,8 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -17,9 +17,14 @@ type Authenticator interface {
 }
 
 type User struct {
-	name   string
-	email  string
-	groups []string
+	Name   string   `json:"name"`
+	Email  string   `json:"email"`
+	Groups []string `json:"groups"`
+}
+
+type UserResponse struct {
+	User       *User  `json:"user"`
+	ExpiryTime string `json:"expirytime"`
 }
 
 var jwtUtil *JwtUtil
@@ -28,7 +33,11 @@ var authenticators []Authenticator
 func main() {
 	log.SetLevel(log.DebugLevel)
 
-	jwtUtil = &JwtUtil{}
+	jwtUtil = &JwtUtil{
+		ExpireSeconds:  60 * 10,
+		HmacSigningKey: []byte("Secret123"),
+		Issuer:         "forward-proxy-auth",
+	}
 	textfileAuth := &TextfileAuth{}
 	authenticators = append(authenticators, textfileAuth)
 
@@ -38,20 +47,19 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
 
-func extractUser(r *http.Request) (user *User, err error) {
-	cookieToken, tokenErr := r.Cookie("token")
-
-	if tokenErr != nil {
-		log.Debug("No token cookie ", tokenErr)
-		return nil, tokenErr
-	}
-
-	return jwtUtil.validate(cookieToken.Value)
+func writeAuthenticationResponseHeaders(w http.ResponseWriter, user *User) {
+	w.Header().Set("X-Authenticated-User", user.Name)
+	w.Header().Set("X-Authenticated-User-Mail", user.Email)
 }
 
-func writeAuthenticationResponseHeaders(w http.ResponseWriter, user *User) {
-	w.Header().Set("X-Authenticated-User", user.name)
-	w.Header().Set("X-Authenticated-User-Mail", user.email)
+func writeUserResponse(w http.ResponseWriter, user *User, expiryTime time.Time) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	userResponse := &UserResponse{
+		User:       user,
+		ExpiryTime: expiryTime.Format(time.RFC3339),
+	}
+	json.NewEncoder(w).Encode(userResponse)
 }
 
 func getForwardedUri(r *http.Request) string {
@@ -61,48 +69,55 @@ func getForwardedUri(r *http.Request) string {
 func handleAuth(w http.ResponseWriter, r *http.Request) {
 
 	// try to extraxct user from token
-	user, err := extractUser(r)
+	cookieToken, err := r.Cookie("token")
 	if err == nil {
-		writeAuthenticationResponseHeaders(w, user)
-		w.WriteHeader(http.StatusNoContent)
-		return
+		user, expiryTime, err := jwtUtil.validateToken(cookieToken.Value)
+
+		if err == nil {
+			writeAuthenticationResponseHeaders(w, user)
+			writeUserResponse(w, user, expiryTime)
+			return
+		}
+	}
+
+	if err != nil {
+		log.Debug(err)
 	}
 
 	// try to login by basic auth credentials
-	user, err = login(r)
+	user, err := login(r)
 
 	if err != nil {
 		// no valid credentials, show new basic auth dialog
-		log.Debug("Could not login ", err)
+		log.Debugf("Could not login %s", err)
 		w.Header().Set("WWW-Authenticate", `Basic realm="Restricted Area"`)
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
 	// create token for authenticated user
-	token, err := jwtUtil.createToken(user)
+	token, expiryTime, err := jwtUtil.createToken(user)
 
 	if err != nil {
-		log.Error("Could not create token", err)
+		log.Errorf("Could not create token for User %s, %s", user.Name, err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
 	// return token in cookie and redirect on the originally requested uri
-	expire := time.Now().AddDate(0, 0, 1)
 	cookie := http.Cookie{
 		Name:    "token",
 		Value:   token,
-		Expires: expire,
+		Expires: expiryTime,
 	}
 	http.SetCookie(w, &cookie)
 
 	forwardedUri := getForwardedUri(r)
 	if len(forwardedUri) > 0 {
-		log.Debug("Sending redirect to %s for user %s ", forwardedUri, user.name)
+		log.Debugf("Sending redirect to %s for user %s ", forwardedUri, user.Name)
 		http.Redirect(w, r, forwardedUri, http.StatusSeeOther)
 	} else {
-		fmt.Fprintln(w, "Welcome %s! Please reload page", user.name)
+		writeUserResponse(w, user, expiryTime)
 	}
 
 }
