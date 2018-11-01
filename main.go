@@ -6,13 +6,13 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jtblin/go-ldap-client"
 	"github.com/kekru/forward-proxy-auth/authenticator"
 	"github.com/kekru/forward-proxy-auth/jwtutil"
 	"github.com/kekru/forward-proxy-auth/model"
 
 	log "github.com/sirupsen/logrus"
 
-	//"encoding/base64"
 	"github.com/gorilla/mux"
 )
 
@@ -35,8 +35,26 @@ func main() {
 		HmacSigningKey: []byte("Secret123"),
 		Issuer:         "forward-proxy-auth",
 	}
-	textfileAuth := &authenticator.TextfileAuth{}
-	authenticators = append(authenticators, textfileAuth)
+	//textfileAuth := &authenticator.TextfileAuth{}
+	//authenticators = append(authenticators, textfileAuth)
+
+	ldapAuth := &authenticator.LdapAuth{
+		Client: &ldap.LDAPClient{
+			Base:         "ou=people,dc=planetexpress,dc=com",
+			Host:         "localhost",
+			Port:         389,
+			UseSSL:       false,
+			BindDN:       "cn=admin,dc=planetexpress,dc=com",
+			BindPassword: "GoodNewsEveryone",
+			UserFilter:   "(uid=%s)",
+			GroupFilter:  "(member=cn=%s,ou=people,dc=planetexpress,dc=com)",
+			Attributes:   []string{"givenName", "sn", "mail", "uid", "cn"},
+		},
+		UserNameField:         "uid",
+		UserEmailField:        "mail",
+		UserNameInGroupsField: "cn",
+	}
+	authenticators = append(authenticators, ldapAuth)
 
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/auth", handleAuth)
@@ -86,7 +104,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		// no valid credentials, show new basic auth dialog
-		log.Debugf("Could not login %s", err)
+		log.Debugf("Could not login. %s", err)
 		w.Header().Set("WWW-Authenticate", `Basic realm="Restricted Area"`)
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
@@ -134,6 +152,6 @@ func login(r *http.Request) (user *model.User, err error) {
 		}
 	}
 
-	err = errors.New("no user with given username and password found. Username " + username)
+	err = errors.New("No user with given username and password found. Username: " + username)
 	return
 }

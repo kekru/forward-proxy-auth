@@ -26,6 +26,14 @@
   version = "v1.6.2"
 
 [[projects]]
+  digest = "1:0d43fa57b5dffcfde65d893089a0f6c39f21b3ce4ceb84ea25472fd562f39dd4"
+  name = "github.com/jtblin/go-ldap-client"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "ad9f2ea47a83452873c01f1dc6960aedb9ff7e0e"
+  version = "0.0.3"
+
+[[projects]]
   digest = "1:0a69a1c0db3591fcefb47f115b224592c8dfa4368b7ba9fae509d5e16cdc95c8"
   name = "github.com/konsorten/go-windows-terminal-sequences"
   packages = ["."]
@@ -60,12 +68,29 @@
   pruneopts = "UT"
   revision = "95b1ffbd15a57cc5abb3f04402b9e8ec0016a52c"
 
+[[projects]]
+  digest = "1:81e1c5cee195fca5de06e2540cb63eea727a850b7e5c213548e7f81521c97a57"
+  name = "gopkg.in/asn1-ber.v1"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "379148ca0225df7a432012b8df0355c2a2063ac0"
+  version = "v1.2"
+
+[[projects]]
+  digest = "1:93aaeb913621a3a53aaa78592c00f46d63e3bb0ea76e2d9b07327b50959a5778"
+  name = "gopkg.in/ldap.v2"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "bb7a9ca6e4fbc2129e3db588a34bc970ffe811a9"
+  version = "v2.5.1"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
     "github.com/dgrijalva/jwt-go",
     "github.com/gorilla/mux",
+    "github.com/jtblin/go-ldap-client",
     "github.com/sirupsen/logrus",
   ]
   solver-name = "gps-cdcl"
