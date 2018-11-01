@@ -1,0 +1,15 @@
+version: '3.7'
+services:
+  forward-proxy-auth:
+    build: ..
+    networks:
+      - default
+    ports:
+      - 8080:8080
+  
+  ldap-test:
+    image: rroemhild/test-openldap
+    networks:
+      - default
+    ports:
+      - 389:389
