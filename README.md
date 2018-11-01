@@ -1,3 +1,5 @@
+[![Go Report Card](https://goreportcard.com/badge/github.com/kekru/forward-proxy-auth)](https://goreportcard.com/report/github.com/kekru/forward-proxy-auth)
+
 # forward-proxy-auth
 This aims to be a forward auth service usable by traefik's forward authentication.  
 This is still work in progress and it is my first project in golang.
