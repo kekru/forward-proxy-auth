@@ -26,14 +26,6 @@
   version = "v1.6.2"
 
 [[projects]]
-  digest = "1:0d43fa57b5dffcfde65d893089a0f6c39f21b3ce4ceb84ea25472fd562f39dd4"
-  name = "github.com/jtblin/go-ldap-client"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "ad9f2ea47a83452873c01f1dc6960aedb9ff7e0e"
-  version = "0.0.3"
-
-[[projects]]
   digest = "1:0a69a1c0db3591fcefb47f115b224592c8dfa4368b7ba9fae509d5e16cdc95c8"
   name = "github.com/konsorten/go-windows-terminal-sequences"
   packages = ["."]
@@ -90,8 +82,8 @@
   input-imports = [
     "github.com/dgrijalva/jwt-go",
     "github.com/gorilla/mux",
-    "github.com/jtblin/go-ldap-client",
     "github.com/sirupsen/logrus",
+    "gopkg.in/ldap.v2",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

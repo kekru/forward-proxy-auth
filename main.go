@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jtblin/go-ldap-client"
 	"github.com/kekru/forward-proxy-auth/authenticator"
 	"github.com/kekru/forward-proxy-auth/jwtutil"
 	"github.com/kekru/forward-proxy-auth/model"
@@ -39,21 +38,19 @@ func main() {
 	//authenticators = append(authenticators, textfileAuth)
 
 	ldapAuth := &authenticator.LdapAuth{
-		Client: &ldap.LDAPClient{
-			Base:         "ou=people,dc=planetexpress,dc=com",
-			Host:         "localhost",
-			Port:         389,
-			UseSSL:       false,
-			BindDN:       "cn=admin,dc=planetexpress,dc=com",
-			BindPassword: "GoodNewsEveryone",
-			UserFilter:   "(uid=%s)",
-			GroupFilter:  "(member=cn=%s,ou=people,dc=planetexpress,dc=com)",
-			Attributes:   []string{"givenName", "sn", "mail", "uid", "cn"},
-		},
-		UserNameField:         "uid",
-		UserEmailField:        "mail",
-		UserNameInGroupsField: "cn",
+		LdapURL:        "ldap://localhost:389",
+		BaseDN:         "ou=people,dc=planetexpress,dc=com",
+		BindDN:         "cn=admin,dc=planetexpress,dc=com",
+		BindDNPassword: "GoodNewsEveryone",
+		UserFilter:     "(uid=%s)",
+		GroupFilter:    "(member=cn=%s,ou=people,dc=planetexpress,dc=com)",
+
+		UserNameField:           "uid",
+		UserEmailField:          "mail",
+		UserFieldForGroupFilter: "cn",
+		GroupNameField:          "cn",
 	}
+
 	authenticators = append(authenticators, ldapAuth)
 
 	router := mux.NewRouter().StrictSlash(true)
@@ -149,6 +146,8 @@ func login(r *http.Request) (user *model.User, err error) {
 		user, err = auth.Authenticate(username, password)
 		if err == nil {
 			return
+		} else {
+			log.Debug(err)
 		}
 	}
 

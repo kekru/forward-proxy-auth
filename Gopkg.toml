@@ -34,8 +34,8 @@
   version = "v3.2.0"
 
 [[constraint]]
-  name = "github.com/jtblin/go-ldap-client"
-  version = "0.0.3"
+  name = "gopkg.in/ldap.v2"
+  version = "v2.5.1"
 
 [prune]
   go-tests = true
