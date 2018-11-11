@@ -12,17 +12,17 @@ import (
 )
 
 type LdapAuth struct {
-	LdapURL        string
-	BaseDN         string
-	BindDN         string
-	BindDNPassword string
-	UserFilter     string
-	GroupFilter    string
+	LdapURL        string `yaml:"LdapURL"`
+	BaseDN         string `yaml:"BaseDN"`
+	BindDN         string `yaml:"BindDN"`
+	BindDNPassword string `yaml:"BindDNPassword"`
+	UserFilter     string `yaml:"UserFilter"`
+	GroupFilter    string `yaml:"GroupFilter"`
 
-	UserNameField           string
-	UserEmailField          string
-	UserFieldForGroupFilter string
-	GroupNameField          string
+	UserNameField           string `yaml:"UserNameField"`
+	UserEmailField          string `yaml:"UserEmailField"`
+	UserFieldForGroupFilter string `yaml:"UserFieldForGroupFilter"`
+	GroupNameField          string `yaml:"GroupNameField"`
 
 	connection *ldap.Conn
 }

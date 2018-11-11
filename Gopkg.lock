@@ -10,6 +10,14 @@
   version = "v3.2.0"
 
 [[projects]]
+  digest = "1:342378ac4dcb378a5448dd723f0784ae519383532f5e70ade24132c4c8693202"
+  name = "github.com/go-yaml/yaml"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
+  version = "v2.2.1"
+
+[[projects]]
   digest = "1:c79fb010be38a59d657c48c6ba1d003a8aa651fa56b579d959d74573b7dff8e1"
   name = "github.com/gorilla/context"
   packages = ["."]
@@ -81,6 +89,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/dgrijalva/jwt-go",
+    "github.com/go-yaml/yaml",
     "github.com/gorilla/mux",
     "github.com/sirupsen/logrus",
     "gopkg.in/ldap.v2",
