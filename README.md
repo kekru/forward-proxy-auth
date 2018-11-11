@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/kekru/forward-proxy-auth.svg?branch=master)](https://travis-ci.org/kekru/forward-proxy-auth)
 [![Go Report Card](https://goreportcard.com/badge/github.com/kekru/forward-proxy-auth)](https://goreportcard.com/report/github.com/kekru/forward-proxy-auth)
 
 # forward-proxy-auth
