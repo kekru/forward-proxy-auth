@@ -42,6 +42,14 @@
   version = "v1.6.2"
 
 [[projects]]
+  digest = "1:edbef42561faa44c19129b68d1e109fbc1647f63239250391eadc8d0e7c9f669"
+  name = "github.com/kelseyhightower/envconfig"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "f611eb38b3875cc3bd991ca91c51d06446afa14c"
+  version = "v1.3.0"
+
+[[projects]]
   digest = "1:0a69a1c0db3591fcefb47f115b224592c8dfa4368b7ba9fae509d5e16cdc95c8"
   name = "github.com/konsorten/go-windows-terminal-sequences"
   packages = ["."]
@@ -66,12 +74,9 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:c40d65817cdd41fac9aa7af8bed56927bb2d6d47e4fea566a74880f5c2b1c41e"
+  digest = "1:18752d0b95816a1b777505a97f71c7467a8445b8ffb55631a7bf779f6ba4fa83"
   name = "github.com/stretchr/testify"
-  packages = [
-    "assert",
-    "require",
-  ]
+  packages = ["assert"]
   pruneopts = "UT"
   revision = "f35b8ab0b5a2cef36673838d662e249dd9c94686"
   version = "v1.2.2"
@@ -118,9 +123,9 @@
     "github.com/dgrijalva/jwt-go",
     "github.com/go-yaml/yaml",
     "github.com/gorilla/mux",
+    "github.com/kelseyhightower/envconfig",
     "github.com/sirupsen/logrus",
     "github.com/stretchr/testify/assert",
-    "github.com/stretchr/testify/require",
     "gopkg.in/ldap.v2",
   ]
   solver-name = "gps-cdcl"

@@ -18,6 +18,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/gorilla/mux"
+	"github.com/kelseyhightower/envconfig"
 )
 
 type Authenticator interface {
@@ -83,6 +84,12 @@ func main() {
 	err = yaml.Unmarshal(bytes, config)
 	if err != nil {
 		log.Fatalf("error: %v", err)
+	}
+	fmt.Println(*config)
+
+	err = envconfig.Process("fpa", config)
+	if err != nil {
+		log.Fatal(err.Error())
 	}
 	fmt.Println(*config)
 
@@ -222,7 +229,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-		
+
 	// return token in cookie
 	writeResponseToken(token, expiryTime, w)
 
