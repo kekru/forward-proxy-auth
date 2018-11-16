@@ -4,7 +4,7 @@ Server:
   LogLevel: debug
 
 Header:
-  ForwardedUri: test.example.com
+  ForwardedUri: X-Forwarded-Uri
   TokenCookie:
    - token
   TokenHeader:
@@ -21,7 +21,7 @@ Jwt:
 
 Authenticator:
   Ldap:
-    LdapURL:        "ldap://localhost:389"
+    LdapURL:        "ldap://ldap-test:389"
     BaseDN:         "ou=people,dc=planetexpress,dc=com"
     BindDN:         "cn=admin,dc=planetexpress,dc=com"
     BindDNPassword: "GoodNewsEveryone"

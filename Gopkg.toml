@@ -41,6 +41,13 @@
   name = "github.com/go-yaml/yaml"
   version = "v2.2.1"
 
+# --------------------
+# for testing
+[[constraint]]
+  name = "github.com/stretchr/testify"
+  version = "v1.2.2"
+# --------------------  
+
 [prune]
   go-tests = true
   unused-packages = true
