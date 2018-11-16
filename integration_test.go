@@ -43,8 +43,16 @@ func TestBasicAuthLogin(t *testing.T) {
 
 	cookies := res.Cookies()
 	if assert.Len(cookies, 1) {
-		assert.Equal("token", cookies[0].Name)
-		assert.NotEmpty(cookies[0].Value)
+		cookie := cookies[0]
+		assert.Equal("token", cookie.Name)
+		assert.NotEmpty(cookie.Value)
+
+		assert.Equal(10*60, cookie.MaxAge)
+		assert.Equal(true, cookie.HttpOnly)
+		assert.Equal(http.SameSiteStrictMode, cookie.SameSite)
+		assert.Equal(false, cookie.Secure)
+		assert.Equal("localhost", cookie.Domain)
+		assert.Equal("/", cookie.Path)
 	}
 }
 
@@ -66,12 +74,8 @@ func TestSendValidToken(t *testing.T) {
 
 	// Then
 	assert.Equal(200, res.StatusCode)
-	defer res.Body.Close()
-	bodyBytes, err := ioutil.ReadAll(res.Body)
-	assert.Nil(err)
-
 	userRes := &UserResponse{}
-	json.Unmarshal(bodyBytes, userRes)
+	readBodyJson(res, userRes, assert)
 
 	assert.Equal("bender", userRes.User.Name)
 	assert.Equal("bender@planetexpress.com", userRes.User.Email)
@@ -85,6 +89,34 @@ func TestSendValidToken(t *testing.T) {
 	assert.WithinDuration(expectedExpiryTime, actualExpiryTime, time.Second*5)
 }
 
+// Given: authentication is already performed
+// When sending a maipulated token
+// Then 403 is returned
+func TestSendManipulatedToken(t *testing.T) {
+	assert := assert.New(t)
+
+	client := createClient()
+
+	// Given
+	res := sendBasicAuthLogin(client, t)
+	cookies := res.Cookies()
+	assert.Len(cookies, 1)
+	tokenCookie := cookies[0]
+	assert.Equal("token", tokenCookie.Name)
+	assert.NotEqual("x", tokenCookie.Value[0])
+
+	// When
+	req, _ := http.NewRequest("GET", "http://localhost:8080/auth", nil)
+	tokenCookie.Value = "x" + tokenCookie.Value[1:]
+
+	client.Jar.SetCookies(req.URL, []*http.Cookie{tokenCookie})
+	res = send(req, client, t)
+
+	// Then
+	assert.Equal(401, res.StatusCode)
+	assert.Equal("Unauthorized\n", readBodyString(res, assert))
+}
+
 func createClient() (client *http.Client) {
 	cookieJar, _ := cookiejar.New(nil)
 
@@ -96,6 +128,20 @@ func createClient() (client *http.Client) {
 	}
 }
 
+func readBodyString(res *http.Response, assert *assert.Assertions) string {
+	defer res.Body.Close()
+	bodyBytes, err := ioutil.ReadAll(res.Body)
+	assert.Nil(err)
+	return string(bodyBytes)
+}
+
+func readBodyJson(res *http.Response, target interface{}, assert *assert.Assertions) {
+	defer res.Body.Close()
+	bodyBytes, err := ioutil.ReadAll(res.Body)
+	assert.Nil(err)
+	json.Unmarshal(bodyBytes, target)
+}
+
 func sendBasicAuthLogin(client *http.Client, t *testing.T) (res *http.Response) {
 	req, _ := http.NewRequest("GET", "http://localhost:8080/auth", nil)
 	req.Header.Add("X-Forwarded-Uri", "http://myapp.example.com/any/page")
@@ -105,8 +151,8 @@ func sendBasicAuthLogin(client *http.Client, t *testing.T) (res *http.Response) 
 }
 
 func send(req *http.Request, client *http.Client, t *testing.T) (res *http.Response) {
-	printReq(req, t)
 	res, err := client.Do(req)
+	printReq(req, t)
 	printRes(res, t)
 	if err != nil {
 		t.Errorf("failed %s", err)
