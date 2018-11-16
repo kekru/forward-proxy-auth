@@ -1,6 +1,6 @@
 FROM golang:1.11.1-alpine as builder
 
-RUN apk update && apk add curl
+RUN apk update && apk add curl git
 RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 WORKDIR /go/src/github.com/kekru/forward-proxy-auth/
 ADD . .

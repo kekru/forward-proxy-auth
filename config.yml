@@ -6,8 +6,16 @@ Server:
 Header:
   ForwardedUri: X-Forwarded-Uri
   TokenCookie:
-   - token
-  TokenHeader:
+    Names:
+     - token
+    Domain: localhost
+    Path: /
+    Secure: false
+    HttpOnly: true
+    SameSite: true
+    Persistent: true
+    
+  TokenHeaders:
 
   AuthenticatedUser:
    - X-Forwarded-User

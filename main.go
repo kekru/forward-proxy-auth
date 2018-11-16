@@ -39,8 +39,16 @@ type ForwardAuthConfig struct {
 	Header struct {
 		ForwardedUri string `yaml:"ForwardedUri"`
 
-		TokenCookie []string `yaml:"TokenCookie"`
-		TokenHeader []string `yaml:"TokenHeader"`
+		TokenCookie struct {
+			Names      []string `yaml:"Names"`
+			Domain     string   `yaml:"Domain"`
+			Path       string   `yaml:"Path"`
+			Secure     bool     `yaml:"Secure"`
+			HttpOnly   bool     `yaml:"HttpOnly"`
+			SameSite   bool     `yaml:"SameSite"`
+			Persistent bool     `yaml:"Persistent"`
+		} `yaml:"TokenCookie"`
+		TokenHeaders []string `yaml:"TokenHeaders"`
 
 		AuthenticatedUser   []string `yaml:"AuthenticatedUser"`
 		AuthenticatedEMail  []string `yaml:"AuthenticatedEMail"`
@@ -124,7 +132,7 @@ func getForwardedUri(r *http.Request) string {
 }
 
 func extractUserFromToken(r *http.Request) (user *model.User, expiryTime time.Time, err error) {
-	for _, cookieName := range config.Header.TokenCookie {
+	for _, cookieName := range config.Header.TokenCookie.Names {
 		cookieToken, err := r.Cookie(cookieName)
 		if err == nil {
 			user, expiryTime, err := jwtUtil.ValidateToken(cookieToken.Value)
@@ -134,7 +142,7 @@ func extractUserFromToken(r *http.Request) (user *model.User, expiryTime time.Ti
 		}
 	}
 
-	for _, headerName := range config.Header.TokenHeader {
+	for _, headerName := range config.Header.TokenHeaders {
 		headerValue := r.Header.Get(headerName)
 		if len(headerValue) > 0 {
 			user, expiryTime, err := jwtUtil.ValidateToken(headerValue)
@@ -150,16 +158,33 @@ func extractUserFromToken(r *http.Request) (user *model.User, expiryTime time.Ti
 
 func writeResponseToken(token string, expiryTime time.Time, w http.ResponseWriter) {
 
-	for _, cookieName := range config.Header.TokenCookie {
+	cookieMaxAge := 0
+	if config.Header.TokenCookie.Persistent {
+		cookieMaxAge = int(expiryTime.Unix() - time.Now().Unix())
+	}
+
+	var sameSite http.SameSite
+	if config.Header.TokenCookie.SameSite {
+		sameSite = http.SameSiteStrictMode
+	} else {
+		sameSite = http.SameSiteLaxMode
+	}
+
+	for _, cookieName := range config.Header.TokenCookie.Names {
 		cookie := http.Cookie{
-			Name:    cookieName,
-			Value:   token,
-			Expires: expiryTime,
+			Name:     cookieName,
+			Value:    token,
+			SameSite: sameSite,
+			MaxAge:   cookieMaxAge,
+			HttpOnly: config.Header.TokenCookie.HttpOnly,
+			Secure:   config.Header.TokenCookie.Secure,
+			Domain:   config.Header.TokenCookie.Domain,
+			Path:     config.Header.TokenCookie.Path,
 		}
 		http.SetCookie(w, &cookie)
 	}
 
-	for _, headerName := range config.Header.TokenHeader {
+	for _, headerName := range config.Header.TokenHeaders {
 		w.Header().Set(headerName, token)
 	}
 }
@@ -197,7 +222,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-
+		
 	// return token in cookie
 	writeResponseToken(token, expiryTime, w)
 
