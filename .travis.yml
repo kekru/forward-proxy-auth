@@ -8,11 +8,17 @@ services:
 go:
   - "1.11.x"
 
+cache:
+  directories:
+    - $HOME/.gradle/caches/
+    - $HOME/.gradle/wrapper/
+    - $HOME/.m2/repository/
+
 env:
   - DEP_VERSION="0.5.0"
 
 before_install:
-  - apt-get install -y openjdk11-jdk
+  - sudo apt-get install -y openjdk11-jdk
   - curl -L -s https://github.com/golang/dep/releases/download/v${DEP_VERSION}/dep-linux-amd64 -o $GOPATH/bin/dep
   - chmod +x $GOPATH/bin/dep
 
