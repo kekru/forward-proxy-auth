@@ -13,4 +13,14 @@ forward-proxy-auth
 *.out
 
 vendor
+
 .vscode
+build
+.gradle
+
+.settings
+.project
+.classpath
+.idea
+bin
+
