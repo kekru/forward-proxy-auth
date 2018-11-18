@@ -16,3 +16,9 @@ vendor
 .vscode
 build
 .gradle
+
+.settings
+.project
+.classpath
+.idea
+bin
