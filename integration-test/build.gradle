@@ -12,4 +12,7 @@ repositories {
 dependencies {
   compile "org.codehaus.groovy:groovy-all:2.4.15"
   testCompile "org.spockframework:spock-core:1.2-groovy-2.4"
+  testCompile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.6'
+
+
 }
