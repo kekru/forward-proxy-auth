@@ -14,3 +14,5 @@ forward-proxy-auth
 
 vendor
 .vscode
+build
+.gradle

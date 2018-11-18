@@ -1,0 +1,15 @@
+apply plugin: "groovy"
+
+version = "1.0"
+description = "forward-proxy-auth integration tests"
+
+sourceCompatibility = 1.7
+
+repositories {
+  mavenCentral()
+}
+
+dependencies {
+  compile "org.codehaus.groovy:groovy-all:2.4.15"
+  testCompile "org.spockframework:spock-core:1.2-groovy-2.4"
+}
