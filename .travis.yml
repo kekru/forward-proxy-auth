@@ -29,4 +29,4 @@ script:
   - go build
   - cd test && docker-compose up -d && cd ..
   - go test
-  - cd integration-test && ./gradlew test --info
+  - cd integration-test && ./gradlew --no-daemon check --info
