@@ -11,8 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var serviceInfo *it.ServiceInfo
+
 func TestMain(m *testing.M) {
-	serviceInfo := it.ServiceSetup("base-ldap").Env("hello", "world").Env("x", "y").Start()
+	serviceInfo = it.ServiceSetup("base-ldap").Start()
 
 	testResult := m.Run()
 

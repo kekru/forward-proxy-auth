@@ -36,6 +36,18 @@ func (serviceInfo *ServiceInfo) Start() *ServiceInfo {
 	return serviceInfo
 }
 
+func (serviceInfo *ServiceInfo) RestartFPA() *ServiceInfo {
+	serviceInfo.writeEnvFile()
+	runCommand("resources/compose/"+serviceInfo.Name, "docker-compose", "restart", "forward-proxy-auth")
+	time.Sleep(200 * time.Millisecond)
+	return serviceInfo
+}
+
+func (serviceInfo *ServiceInfo) ClearEnv() *ServiceInfo {
+	serviceInfo.envVars = make(map[string]string)
+	return serviceInfo
+}
+
 func (serviceInfo *ServiceInfo) Stop() {
 	if os.Getenv("FPA_TEST_KEEP_RUNNING") != "1" {
 		runCommand("resources/compose/"+serviceInfo.Name, "docker-compose", "down")
