@@ -1,22 +1,18 @@
 package integrationtest
 
 import (
-	"encoding/json"
-	"io/ioutil"
 	"net/http"
-	"net/http/cookiejar"
-	"net/http/httputil"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/kekru/forward-proxy-auth/integrationtest/base"
+	it "github.com/kekru/forward-proxy-auth/integrationtest/base"
 	"github.com/kekru/forward-proxy-auth/model"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
-	serviceInfo := base.ServiceSetup("base-ldap").Env("hello", "world").Env("x", "y").Start()
+	serviceInfo := it.ServiceSetup("base-ldap").Env("hello", "world").Env("x", "y").Start()
 
 	testResult := m.Run()
 
@@ -29,9 +25,9 @@ func TestMain(m *testing.M) {
 func TestNoTokenNoPassword(t *testing.T) {
 	assert := assert.New(t)
 
-	client := createClient()
+	client := it.CreateClient()
 	req, _ := http.NewRequest("GET", "http://localhost:8080/auth", nil)
-	res := send(req, client, t)
+	res := it.Send(req, client, t)
 
 	assert.Equal(401, res.StatusCode)
 	assert.Equal(0, len(res.Cookies()))
@@ -43,12 +39,12 @@ func TestNoTokenNoPassword(t *testing.T) {
 func TestBasicAuthLogin(t *testing.T) {
 	assert := assert.New(t)
 
-	client := createClient()
+	client := it.CreateClient()
 	req, _ := http.NewRequest("GET", "http://localhost:8080/auth", nil)
 	req.Header.Add("X-Forwarded-Uri", "http://myapp.example.com/any/page")
 	req.SetBasicAuth("bender", "bender")
 
-	res := send(req, client, t)
+	res := it.Send(req, client, t)
 
 	assert.Equal(303, res.StatusCode)
 	assert.Equal("http://myapp.example.com/any/page", res.Header.Get("Location"))
@@ -75,19 +71,19 @@ func TestBasicAuthLogin(t *testing.T) {
 func TestSendValidToken(t *testing.T) {
 	assert := assert.New(t)
 
-	client := createClient()
+	client := it.CreateClient()
 
 	// Given
 	sendBasicAuthLogin(client, t)
 
 	// When
 	req, _ := http.NewRequest("GET", "http://localhost:8080/auth", nil)
-	res := send(req, client, t)
+	res := it.Send(req, client, t)
 
 	// Then
 	assert.Equal(200, res.StatusCode)
 	userRes := &model.UserResponse{}
-	readBodyJson(res, userRes, assert)
+	it.ReadBodyJson(res, userRes, assert)
 
 	assert.Equal("bender", userRes.User.Name)
 	assert.Equal("bender@planetexpress.com", userRes.User.Email)
@@ -107,7 +103,7 @@ func TestSendValidToken(t *testing.T) {
 func TestSendManipulatedToken(t *testing.T) {
 	assert := assert.New(t)
 
-	client := createClient()
+	client := it.CreateClient()
 
 	// Given
 	res := sendBasicAuthLogin(client, t)
@@ -122,36 +118,11 @@ func TestSendManipulatedToken(t *testing.T) {
 	tokenCookie.Value = "x" + tokenCookie.Value[1:]
 
 	client.Jar.SetCookies(req.URL, []*http.Cookie{tokenCookie})
-	res = send(req, client, t)
+	res = it.Send(req, client, t)
 
 	// Then
 	assert.Equal(401, res.StatusCode)
-	assert.Equal("Unauthorized\n", readBodyString(res, assert))
-}
-
-func createClient() (client *http.Client) {
-	cookieJar, _ := cookiejar.New(nil)
-
-	return &http.Client{
-		Jar: cookieJar,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-}
-
-func readBodyString(res *http.Response, assert *assert.Assertions) string {
-	defer res.Body.Close()
-	bodyBytes, err := ioutil.ReadAll(res.Body)
-	assert.Nil(err)
-	return string(bodyBytes)
-}
-
-func readBodyJson(res *http.Response, target interface{}, assert *assert.Assertions) {
-	defer res.Body.Close()
-	bodyBytes, err := ioutil.ReadAll(res.Body)
-	assert.Nil(err)
-	json.Unmarshal(bodyBytes, target)
+	assert.Equal("Unauthorized\n", it.ReadBodyString(res, assert))
 }
 
 func sendBasicAuthLogin(client *http.Client, t *testing.T) (res *http.Response) {
@@ -159,34 +130,5 @@ func sendBasicAuthLogin(client *http.Client, t *testing.T) (res *http.Response) 
 	req.Header.Add("X-Forwarded-Uri", "http://myapp.example.com/any/page")
 	req.SetBasicAuth("bender", "bender")
 
-	return send(req, client, t)
-}
-
-func send(req *http.Request, client *http.Client, t *testing.T) (res *http.Response) {
-	res, err := client.Do(req)
-	printReq(req, t)
-	printRes(res, t)
-	if err != nil {
-		t.Errorf("failed %s", err)
-	}
-
-	return res
-}
-
-func printReq(req *http.Request, t *testing.T) {
-	requestDump, err := httputil.DumpRequestOut(req, true)
-	if err == nil {
-		t.Logf("Request\n%s", string(requestDump))
-	} else {
-		t.Errorf("failed to print request %v", err)
-	}
-}
-
-func printRes(res *http.Response, t *testing.T) {
-	responseDump, err := httputil.DumpResponse(res, true)
-	if err == nil {
-		t.Logf("Response\n%s", string(responseDump))
-	} else {
-		t.Errorf("failed to print response %v", err)
-	}
+	return it.Send(req, client, t)
 }
