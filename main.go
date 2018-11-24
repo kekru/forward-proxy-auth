@@ -225,21 +225,20 @@ func writeResponseToken(token string, expiryTime time.Time, w http.ResponseWrite
 
 func handleAuth(w http.ResponseWriter, r *http.Request) {
 
-	requestDump, err := httputil.DumpRequest(r, true)
-	if err == nil {
-		log.Debugf("Request\n%s", string(requestDump))
-	}
-
 	// try to extraxct user from token
 	user, expiryTime, err := extractUserFromToken(r)
 	if err == nil {
 		writeAuthenticationResponseHeaders(w, user)
 		writeUserResponse(w, user, expiryTime)
 		return
+
+	} else {
+		log.Debug(err)
 	}
 
-	if err != nil {
-		log.Debug(err)
+	requestDump, err := httputil.DumpRequest(r, true)
+	if err == nil {
+		log.Debugf("Request\n%s", string(requestDump))
 	}
 
 	// try to login by basic auth credentials
@@ -332,7 +331,7 @@ func login(r *http.Request) (user *model.User, err error) {
 }
 
 func writeLoginpage(w http.ResponseWriter, forwardedUri string) {
-	
+
 	t, err := template.ParseFiles("static/login.html")
 	if err != nil {
 		log.Errorf("could not read static/login.html, %s", err)
@@ -347,5 +346,5 @@ func writeLoginpage(w http.ResponseWriter, forwardedUri string) {
 		LoginUri: config.Server.Uri + "/auth?redirect=" + forwardedUri,
 	}
 
-	t.Execute(w, templateData)	
+	t.Execute(w, templateData)
 }
