@@ -9,6 +9,7 @@ go:
   - "1.11.x"
 
 env:
+  - DOCKER_BUILDKIT=1
   - DEP_VERSION="0.5.0"
 
 before_install:
