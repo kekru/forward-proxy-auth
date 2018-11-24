@@ -20,6 +20,11 @@ services:
 
   traefik:
     image: traefik:1.7.4
+    labels:
+      - "traefik.frontend.auth.forward.address=http://forward-proxy-auth:8080/auth"
+      - "traefik.frontend.rule=PathPrefixStrip:/traefik"
+      - "traefik.port=8080"
+      - "traefik.enable=true"
     networks:
      - default    
     volumes:
