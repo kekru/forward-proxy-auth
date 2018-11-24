@@ -4,7 +4,7 @@ Server:
   LogLevel: debug
 
 Header:
-  ForwardedUri: X-Forwarded-Uri
+  ForwardedUri: X-Forwarded-Host+X-Forwarded-Prefix+X-Forwarded-Uri
   TokenCookie:
     Names:
      - token
@@ -20,7 +20,9 @@ Header:
   AuthenticatedUser:
    - X-Forwarded-User
   AuthenticatedEMail:
+   - X-Forwarded-EMail
   AuthenticatedGroups:
+   - X-Forwarded-Groups
 
 Jwt:
   ExpireSeconds:  600

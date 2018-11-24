@@ -131,7 +131,30 @@ func writeUserResponse(w http.ResponseWriter, user *model.User, expiryTime time.
 }
 
 func getForwardedUri(r *http.Request) string {
-	return r.Header.Get(config.Header.ForwardedUri)
+
+	forwardedUri := ""
+	headers := strings.Split(config.Header.ForwardedUri, "+")
+	for _, h := range headers {
+		forwardedUri += r.Header.Get(h)
+	}
+
+	forwardedUri = strings.TrimSpace(forwardedUri)
+
+	forwardedUriLower := strings.ToLower(forwardedUri)
+	if !strings.HasPrefix(forwardedUriLower, "http://") && !strings.HasPrefix(forwardedUriLower, "https://") {
+		scheme := r.Header.Get("X-Forwarded-Proto")
+		if scheme == "" {
+			scheme = "http"
+		}
+
+		if !strings.HasSuffix(scheme, "://") {
+			scheme = scheme + "://"
+		}
+
+		forwardedUri = scheme + forwardedUri
+	}
+
+	return forwardedUri
 }
 
 func extractUserFromToken(r *http.Request) (user *model.User, expiryTime time.Time, err error) {
