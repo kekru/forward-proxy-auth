@@ -1,4 +1,4 @@
-package main
+package integrationtest
 
 import (
 	"encoding/json"
@@ -6,11 +6,23 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httputil"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/kekru/forward-proxy-auth/integrationtest/base"
+	"github.com/kekru/forward-proxy-auth/model"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestMain(m *testing.M) {
+	serviceInfo := base.ServiceSetup("base-ldap").Env("hello", "world").Env("x", "y").Start()
+
+	testResult := m.Run()
+
+	serviceInfo.Stop()
+	os.Exit(testResult)
+}
 
 // When to token and no login/password are sent
 // Then 401 is returned
@@ -74,7 +86,7 @@ func TestSendValidToken(t *testing.T) {
 
 	// Then
 	assert.Equal(200, res.StatusCode)
-	userRes := &UserResponse{}
+	userRes := &model.UserResponse{}
 	readBodyJson(res, userRes, assert)
 
 	assert.Equal("bender", userRes.User.Name)

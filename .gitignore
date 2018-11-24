@@ -13,6 +13,7 @@ forward-proxy-auth
 *.out
 
 vendor
+tmpconfig.env
 
 .vscode
 build

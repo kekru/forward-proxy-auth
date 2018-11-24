@@ -1,0 +1,42 @@
+Version: 0.1
+Server:
+  Port: 8080
+  LogLevel: debug
+
+Header:
+  ForwardedUri: X-Forwarded-Uri
+  TokenCookie:
+    Names:
+     - token
+    Domain: localhost
+    Path: /
+    Secure: false
+    HttpOnly: true
+    SameSite: true
+    Persistent: true
+    
+  TokenHeaders:
+
+  AuthenticatedUser:
+   - X-Forwarded-User
+  AuthenticatedEMail:
+  AuthenticatedGroups:
+
+Jwt:
+  ExpireSeconds:  600
+  HmacSigningKey: "Secret123"
+  Issuer:         "forward-proxy-auth"
+
+Authenticator:
+  Ldap:
+    LdapURL:        "ldap://ldap-test:389"
+    BaseDN:         "ou=people,dc=planetexpress,dc=com"
+    BindDN:         "cn=admin,dc=planetexpress,dc=com"
+    BindDNPassword: "GoodNewsEveryone"
+    UserFilter:     "(uid=%s)"
+    GroupFilter:    "(member=cn=%s,ou=people,dc=planetexpress,dc=com)"
+
+    UserNameField:           "uid"
+    UserEmailField:          "mail"
+    UserFieldForGroupFilter: "cn"
+    GroupNameField:          "cn"
