@@ -1,0 +1,40 @@
+version: '3.3'
+services:
+  forward-proxy-auth:
+    image: forward-proxy-auth
+    networks:
+      - default
+    env_file:
+      - tmpconfig.env
+    volumes:
+      - ../default-config.yml:/config.yml:ro
+    ports:
+      - 8080:8080
+
+  traefik:
+    image: traefik:1.7.4
+    networks:
+     - default    
+    volumes:
+     - "/var/run/docker.sock:/var/run/docker.sock:ro"
+     - "./traefik.toml:/traefik.toml:ro"
+    command: -c /traefik.toml
+    ports:
+      - "80:80"
+      - "8081:8080"
+
+  whoami:
+    image: containous/whoami:v1.0.1
+    labels:
+      - "traefik.frontend.rule=PathPrefixStrip:/whoami"
+      - "traefik.port=80"
+      - "traefik.enable=true"
+    networks:
+      - default
+  
+  ldap-test:
+    image: rroemhild/test-openldap
+    networks:
+      - default
+    ports:
+      - 389:389
