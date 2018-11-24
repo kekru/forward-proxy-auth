@@ -21,5 +21,5 @@ install:
 
 script:
   - go build
-  - cd test && docker-compose up -d && cd ..
-  - go test
+  - docker build -t forward-proxy-auth .
+  - cd integrationtest && go test
