@@ -7,7 +7,7 @@ services:
     env_file:
       - tmpconfig.env
     volumes:
-      - ./config.yml:/config.yml:ro
+      - ../default-config.yml:/config.yml:ro
     ports:
       - 8080:8080
   
