@@ -2,6 +2,13 @@ version: '3.3'
 services:
   forward-proxy-auth:
     image: forward-proxy-auth
+    environment: 
+      - FPA_AUTHENTICATOR_METHOD=htmlform
+      - FPA_SERVER_URI=/fpa
+    labels:
+      - "traefik.frontend.rule=PathPrefixStrip:/fpa"
+      - "traefik.port=8080"
+      - "traefik.enable=true"
     networks:
       - default
     env_file:
