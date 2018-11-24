@@ -26,6 +26,8 @@ services:
   whoami:
     image: containous/whoami:v1.0.1
     labels:
+      - "traefik.frontend.auth.forward.address=http://forward-proxy-auth:8080/auth"
+      - "traefik.frontend.auth.forward.authResponseHeaders=X-Forwarded-User,X-Forwarded-Email,X-Forwarded-Groups"
       - "traefik.frontend.rule=PathPrefixStrip:/whoami"
       - "traefik.port=80"
       - "traefik.enable=true"
