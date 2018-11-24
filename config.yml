@@ -1,10 +1,11 @@
 Version: 0.1
 Server:
+  Uri:
   Port: 8080
   LogLevel: debug
 
 Header:
-  ForwardedUri: X-Forwarded-Uri
+  ForwardedUri: X-Forwarded-Host+X-Forwarded-Prefix+X-Forwarded-Uri
   TokenCookie:
     Names:
      - token
@@ -20,7 +21,9 @@ Header:
   AuthenticatedUser:
    - X-Forwarded-User
   AuthenticatedEMail:
+   - X-Forwarded-EMail
   AuthenticatedGroups:
+   - X-Forwarded-Groups
 
 Jwt:
   ExpireSeconds:  600
@@ -28,6 +31,7 @@ Jwt:
   Issuer:         "forward-proxy-auth"
 
 Authenticator:
+  Method: basic
   Ldap:
     LdapURL:        "ldap://ldap-test:389"
     BaseDN:         "ou=people,dc=planetexpress,dc=com"
