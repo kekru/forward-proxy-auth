@@ -30,6 +30,7 @@ Jwt:
   Issuer:         "forward-proxy-auth"
 
 Authenticator:
+  Method: htmlform
   Ldap:
     LdapURL:        "ldap://ldap-test:389"
     BaseDN:         "ou=people,dc=planetexpress,dc=com"

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"strconv"
 	"strings"
 	"time"
@@ -59,6 +60,7 @@ type ForwardAuthConfig struct {
 	} `yaml:"Jwt"`
 
 	Authenticator struct {
+		Method   string                      `yaml:"Method"`
 		Ldap     *authenticator.LdapAuth     `yaml:"Ldap"`
 		Textfile *authenticator.TextfileAuth `yaml:"Textfile"`
 	} `yaml:"Authenticator"`
@@ -217,6 +219,11 @@ func writeResponseToken(token string, expiryTime time.Time, w http.ResponseWrite
 
 func handleAuth(w http.ResponseWriter, r *http.Request) {
 
+	requestDump, err := httputil.DumpRequest(r, true)
+	if err == nil {
+		log.Debugf("Request\n%s", string(requestDump))
+	}
+
 	// try to extraxct user from token
 	user, expiryTime, err := extractUserFromToken(r)
 	if err == nil {
@@ -235,8 +242,17 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// no valid credentials, show new basic auth dialog
 		log.Debugf("Could not login. %s", err)
-		w.Header().Set("WWW-Authenticate", `Basic realm="Restricted Area"`)
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+
+		method := config.Authenticator.Method
+		if method == "basic" {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted Area"`)
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		} else if method == "htmlform" {
+			writeLoginpage(w)
+		} else {
+			log.Errorf("Unknown authentication method: %s", method)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -264,10 +280,31 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 }
 
 func login(r *http.Request) (user *model.User, err error) {
-	username, password, authOK := r.BasicAuth()
+	var username, password string
 
-	if !authOK {
-		err = errors.New("no basic auth credentials")
+	method := config.Authenticator.Method
+	if method == "basic" {
+		var authOK bool
+		username, password, authOK = r.BasicAuth()
+
+		if !authOK {
+			err = errors.New("no basic auth credentials")
+			return
+		}
+	} else if method == "htmlform" {
+		err = r.ParseForm()
+		if err != nil {
+			return
+		}
+		username = strings.TrimSpace(r.Form.Get("username"))
+		password = strings.TrimSpace(r.Form.Get("password"))
+		if len(username) == 0 && len(password) == 0 {
+			err = errors.New("username or password of html form was empty")
+			return
+		}
+
+	} else {
+		err = errors.New("Unknown authentication method: " + method)
 		return
 	}
 
@@ -282,4 +319,21 @@ func login(r *http.Request) (user *model.User, err error) {
 
 	err = errors.New("No user with given username and password found. Username: " + username)
 	return
+}
+
+func writeLoginpage(w http.ResponseWriter) {
+
+	file, err := ioutil.ReadFile("static/login.html")
+
+	//t, err := template.ParseFiles("static/login.html")
+	if err != nil {
+		log.Errorf("could not read static/login.html, %s", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+	//t.Execute(w, config)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(http.StatusUnauthorized)
+	fmt.Fprintln(w, string(file))
 }

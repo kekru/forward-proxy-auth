@@ -14,4 +14,5 @@ FROM scratch
 WORKDIR /
 COPY --from=builder /go/src/github.com/kekru/forward-proxy-auth/forward-proxy-auth /
 COPY config.yml /config.yml
+COPY static /static
 CMD ["/forward-proxy-auth"] 
