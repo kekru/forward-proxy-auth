@@ -24,10 +24,6 @@ import (
 type Authenticator interface {
 	Authenticate(username string, password string) (user *model.User, err error)
 }
-type UserResponse struct {
-	User       *model.User `json:"user"`
-	ExpiryTime string      `json:"expirytime"`
-}
 
 type ForwardAuthConfig struct {
 	Version string `yaml:"Version"`
@@ -127,7 +123,7 @@ func writeAuthenticationResponseHeaders(w http.ResponseWriter, user *model.User)
 func writeUserResponse(w http.ResponseWriter, user *model.User, expiryTime time.Time) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	userResponse := &UserResponse{
+	userResponse := &model.UserResponse{
 		User:       user,
 		ExpiryTime: expiryTime.Format(time.RFC3339),
 	}

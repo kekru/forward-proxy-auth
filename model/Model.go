@@ -5,3 +5,8 @@ type User struct {
 	Email  string   `json:"email"`
 	Groups []string `json:"groups"`
 }
+
+type UserResponse struct {
+	User       *User  `json:"user"`
+	ExpiryTime string `json:"expirytime"`
+}
