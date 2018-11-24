@@ -48,3 +48,22 @@ services:
     image: rroemhild/test-openldap
     networks:
       - default
+
+  gitea:
+    image: gitea/gitea:latest
+    labels:
+      - "traefik.frontend.auth.forward.address=http://fpa/auth"
+      - "traefik.frontend.auth.forward.authResponseHeaders=X-Forwarded-User,X-Forwarded-Email,X-Forwarded-Groups,X-WEBAUTH-USER"
+      - "traefik.frontend.rule=PathPrefixStrip:/gitea"
+      - "traefik.port=3000"
+      - "traefik.enable=true"
+    environment:
+      - ROOT_URL=/gitea
+    volumes:
+      - "./giteadata:/data"
+# following entries must be set in /data/conf/app.ini
+#[security]
+#REVERSE_PROXY_AUTHENTICATION_USER=X-Forwarded-User
+#[service]
+#ENABLE_REVERSE_PROXY_AUTHENTICATION=true
+#ENABLE_REVERSE_PROXY_AUTO_REGISTRATION=true
