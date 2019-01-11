@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/kekru/forward-proxy-auth.svg?branch=master)](https://travis-ci.org/kekru/forward-proxy-auth)
 [![Go Report Card](https://goreportcard.com/badge/github.com/kekru/forward-proxy-auth)](https://goreportcard.com/report/github.com/kekru/forward-proxy-auth)
+[![Microbadger Layers](https://images.microbadger.com/badges/image/whiledo/forward-proxy-auth.svg)](https://microbadger.com/images/whiledo/forward-proxy-auth "Get your own image badge on microbadger.com")
 
 # forward-proxy-auth
 This aims to be a forward auth service usable by traefik's forward authentication.  
