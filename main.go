@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"strconv"
 	"strings"
 	"time"
@@ -25,10 +27,15 @@ type Authenticator interface {
 	Authenticate(username string, password string) (user *model.User, err error)
 }
 
+type LoginFormData struct {
+	LoginUri string
+}
+
 type ForwardAuthConfig struct {
 	Version string `yaml:"Version"`
 
 	Server struct {
+		Uri      string `yaml:"Uri"`
 		Port     int    `yaml:"Port"`
 		Loglevel string `yaml:"Loglevel"`
 	} `yaml:"Server"`
@@ -59,6 +66,7 @@ type ForwardAuthConfig struct {
 	} `yaml:"Jwt"`
 
 	Authenticator struct {
+		Method   string                      `yaml:"Method"`
 		Ldap     *authenticator.LdapAuth     `yaml:"Ldap"`
 		Textfile *authenticator.TextfileAuth `yaml:"Textfile"`
 	} `yaml:"Authenticator"`
@@ -223,20 +231,38 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 		writeAuthenticationResponseHeaders(w, user)
 		writeUserResponse(w, user, expiryTime)
 		return
+
+	} else {
+		log.Debug(err)
 	}
 
-	if err != nil {
-		log.Debug(err)
+	requestDump, err := httputil.DumpRequest(r, true)
+	if err == nil {
+		log.Debugf("Request\n%s", string(requestDump))
 	}
 
 	// try to login by basic auth credentials
 	user, err = login(r)
 
+	forwardedUri := strings.TrimSpace(r.URL.Query().Get("redirect"))
+	if len(forwardedUri) == 0 {
+		forwardedUri = getForwardedUri(r)
+	}
+
 	if err != nil {
 		// no valid credentials, show new basic auth dialog
 		log.Debugf("Could not login. %s", err)
-		w.Header().Set("WWW-Authenticate", `Basic realm="Restricted Area"`)
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+
+		method := config.Authenticator.Method
+		if method == "basic" {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted Area"`)
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		} else if method == "htmlform" {
+			writeLoginpage(w, forwardedUri)
+		} else {
+			log.Errorf("Unknown authentication method: %s", method)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -253,7 +279,6 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 	writeResponseToken(token, expiryTime, w)
 
 	// redirect on the originally requested uri
-	forwardedUri := getForwardedUri(r)
 	if len(forwardedUri) > 0 {
 		log.Debugf("Sending redirect to %s for user %s ", forwardedUri, user.Name)
 		http.Redirect(w, r, forwardedUri, http.StatusSeeOther)
@@ -264,10 +289,31 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 }
 
 func login(r *http.Request) (user *model.User, err error) {
-	username, password, authOK := r.BasicAuth()
+	var username, password string
 
-	if !authOK {
-		err = errors.New("no basic auth credentials")
+	method := config.Authenticator.Method
+	if method == "basic" {
+		var authOK bool
+		username, password, authOK = r.BasicAuth()
+
+		if !authOK {
+			err = errors.New("no basic auth credentials")
+			return
+		}
+	} else if method == "htmlform" {
+		err = r.ParseForm()
+		if err != nil {
+			return
+		}
+		username = strings.TrimSpace(r.Form.Get("username"))
+		password = strings.TrimSpace(r.Form.Get("password"))
+		if len(username) == 0 && len(password) == 0 {
+			err = errors.New("username or password of html form was empty")
+			return
+		}
+
+	} else {
+		err = errors.New("Unknown authentication method: " + method)
 		return
 	}
 
@@ -282,4 +328,23 @@ func login(r *http.Request) (user *model.User, err error) {
 
 	err = errors.New("No user with given username and password found. Username: " + username)
 	return
+}
+
+func writeLoginpage(w http.ResponseWriter, forwardedUri string) {
+
+	t, err := template.ParseFiles("static/login.html")
+	if err != nil {
+		log.Errorf("could not read static/login.html, %s", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(http.StatusUnauthorized)
+
+	templateData := &LoginFormData{
+		LoginUri: config.Server.Uri + "/auth?redirect=" + forwardedUri,
+	}
+
+	t.Execute(w, templateData)
 }

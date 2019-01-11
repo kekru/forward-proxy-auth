@@ -16,7 +16,7 @@ vendor
 tmpconfig.env
 
 .vscode
-build
+/build
 .gradle
 
 .settings
@@ -24,4 +24,5 @@ build
 .classpath
 .idea
 bin
+giteadata
 

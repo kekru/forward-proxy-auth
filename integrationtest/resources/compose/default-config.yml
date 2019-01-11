@@ -1,5 +1,6 @@
 Version: 0.1
 Server:
+  Uri:
   Port: 8080
   LogLevel: debug
 
@@ -30,6 +31,7 @@ Jwt:
   Issuer:         "forward-proxy-auth"
 
 Authenticator:
+  Method: basic
   Ldap:
     LdapURL:        "ldap://ldap-test:389"
     BaseDN:         "ou=people,dc=planetexpress,dc=com"
