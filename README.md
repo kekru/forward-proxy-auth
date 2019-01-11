@@ -15,8 +15,13 @@ This is still work in progress and it is my first project in golang.
 # Build and run
 Run in docker:  
 ```bash
-docker build -t forward-proxy-auth --build-arg=RUN_ENSURE=1 .
+docker build -t forward-proxy-auth .
 docker run --rm -it -p 8080:8080 forward-proxy-auth
+```
+
+Faster docker build, if go dependencies are already fetched (if "dep ensure" has already been run)  
+```bash
+docker build -t forward-proxy-auth --build-arg=RUN_ENSURE=0 .
 ```
 
 # Dockerized development environment
