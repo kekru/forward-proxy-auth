@@ -35,6 +35,7 @@ func (ldapAuth *LdapAuth) Authenticate(username string, password string) (user *
 	}
 
 	username = ldap.EscapeFilter(username)
+	password = ldap.EscapeFilter(password)
 
 	ldapURLParts := strings.Split(ldapAuth.LdapURL, "://")
 	scheme, hostAndPort := strings.ToLower(ldapURLParts[0]), ldapURLParts[1]
@@ -58,7 +59,7 @@ func (ldapAuth *LdapAuth) Authenticate(username string, password string) (user *
 	if err != nil {
 		return nil, err
 	}
-	attributes := []string{ldapAuth.UserNameField, ldapAuth.UserEmailField, "cn", "dn"}
+	attributes := []string{ldapAuth.UserNameField, ldapAuth.UserEmailField, ldapAuth.UserFieldForGroupFilter}
 	userFilter := fmt.Sprintf(ldapAuth.UserFilter, username)
 
 	searchRequest := ldap.NewSearchRequest(
@@ -96,6 +97,7 @@ func (ldapAuth *LdapAuth) Authenticate(username string, password string) (user *
 	}
 
 	usernameForGroupFilter := entry.GetAttributeValue(ldapAuth.UserFieldForGroupFilter)
+	usernameForGroupFilter = ldap.EscapeFilter(usernameForGroupFilter)
 	groupFilter := fmt.Sprintf(ldapAuth.GroupFilter, usernameForGroupFilter)
 
 	searchRequest = ldap.NewSearchRequest(
