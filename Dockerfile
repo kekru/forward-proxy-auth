@@ -8,7 +8,7 @@ RUN ln -s /go/src/github.com/kekru/forward-proxy-auth/ /fpa
 
 # Build the go binary
 FROM go-env AS builder
-ARG RUN_ENSURE=0
+ARG RUN_ENSURE=1
 ADD . .
 RUN if [ $RUN_ENSURE -eq 1 ]; then dep ensure; fi
 RUN dep check
