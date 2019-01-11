@@ -18,3 +18,17 @@ Run in docker:
 docker build -t forward-proxy-auth --build-arg=RUN_ENSURE=1 .
 docker run --rm -it -p 8080:8080 forward-proxy-auth
 ```
+
+# Dockerized development environment
+If you don't have go installed locally, you can create a basic dockerized development environment.  
+
+```bash
+# First build the image (builds only the "go-env" part of the Dockerfile)
+docker build --target go-env -t go-env .
+# Then run a terminal session in the container, with the mounted workspace ...
+docker run --rm -it -v $(pwd):/fpa go-env
+# ... or run "dep ensure" directly ...
+docker run --rm -it -v $(pwd):/fpa go-env dep ensure
+# ... or create the binary
+docker run --rm -it -v $(pwd):/fpa go-env go build
+```
