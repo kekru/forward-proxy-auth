@@ -1,0 +1,15 @@
+#!/bin/bash
+# based on https://github.com/ahaasler/docker-jira/blob/master/hooks/build
+
+echo "SOURCE_COMMIT: $SOURCE_COMMIT"
+echo "DOCKER_TAG: $DOCKER_TAG"
+if [[ -z "$SOURCE_COMMIT" ]]; then
+	SOURCE_COMMIT=$(git rev-parse HEAD)
+fi
+case "$DOCKER_TAG" in
+	master|latest) tag=master ;;
+	*) tag=v$DOCKER_TAG ;;
+esac
+date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+docker build -t $IMAGE_NAME --build-arg SOURCE_COMMIT=$SOURCE_COMMIT --build-arg SOURCE_TAG=$tag --build-arg BUILD_DATE=$date .
