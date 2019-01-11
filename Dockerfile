@@ -10,9 +10,13 @@ RUN if [ $RUN_ENSURE -eq 1 ]; then dep ensure; fi
 RUN dep check
 RUN CGO_ENABLED=0 GOOS=linux go build -a -o forward-proxy-auth .
 
+FROM alpine:3.6 as certificatefetcher
+RUN apk add -U --no-cache ca-certificates
+
 FROM scratch
 WORKDIR /
 COPY --from=builder /go/src/github.com/kekru/forward-proxy-auth/forward-proxy-auth /
+COPY --from=certificatefetcher /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY config.yml /config.yml
 COPY static /static
 CMD ["/forward-proxy-auth"] 
