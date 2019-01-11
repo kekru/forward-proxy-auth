@@ -10,6 +10,6 @@ case "$DOCKER_TAG" in
 	master|latest) tag=master ;;
 	*) tag=v$DOCKER_TAG ;;
 esac
-date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+FORMATTED_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-docker build -t $IMAGE_NAME --build-arg SOURCE_COMMIT=$SOURCE_COMMIT --build-arg SOURCE_TAG=$tag --build-arg BUILD_DATE=$date .
+docker build -t $IMAGE_NAME --build-arg SOURCE_COMMIT=$SOURCE_COMMIT --build-arg SOURCE_TAG=$tag --build-arg BUILD_DATE=$FORMATTED_DATE .
