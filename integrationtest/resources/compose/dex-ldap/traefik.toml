@@ -1,0 +1,17 @@
+defaultEntryPoints = ["http"]
+
+[web]
+address = ":8080"
+readOnly = true
+
+[web.statistics]
+
+[docker]
+exposedByDefault = false
+watch = true
+swarmmode = false
+
+[entryPoints]
+  [entryPoints.http]
+  address = ":80"
+

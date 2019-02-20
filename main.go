@@ -69,6 +69,7 @@ type ForwardAuthConfig struct {
 		Method   string                      `yaml:"Method"`
 		Ldap     *authenticator.LdapAuth     `yaml:"Ldap"`
 		Textfile *authenticator.TextfileAuth `yaml:"Textfile"`
+		OpenId   *authenticator.OpenIdAuth   `yaml:"OpenId"`
 	} `yaml:"Authenticator"`
 }
 
@@ -107,8 +108,17 @@ func main() {
 
 	log.SetLevel(log.DebugLevel)
 
+	config.Authenticator.OpenId = &authenticator.OpenIdAuth{
+		ClientID:     "example-app",
+		ClientSecret: "ZXhhbXBsZS1hcHAtc2VjcmV0",
+		ProviderURL:  "http://192.168.0.150:5556/dex",
+		RedirectURL:  "http://192.168.0.150/fpa/callback",
+	}
+	config.Authenticator.OpenId.Init()
+
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/auth", handleAuth)
+	router.HandleFunc("/callback", config.Authenticator.OpenId.HandleCallback)
 
 	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(config.Server.Port), router))
 }
@@ -259,6 +269,8 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		} else if method == "htmlform" {
 			writeLoginpage(w, forwardedUri)
+		} else if method == "openid" {
+			config.Authenticator.OpenId.RedirectToOpenIdProvider(w, r)
 		} else {
 			log.Errorf("Unknown authentication method: %s", method)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

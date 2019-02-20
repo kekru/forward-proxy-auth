@@ -1,0 +1,62 @@
+version: '3.3'
+services:
+  fpa:
+    #image: forward-proxy-auth
+    build: ../../../..
+    environment: 
+      - FPA_AUTHENTICATOR_METHOD=openid
+      - FPA_SERVER_URI=/fpa
+      - FPA_SERVER_PORT=80
+    labels:
+      - "traefik.frontend.rule=PathPrefixStrip:/fpa"
+      - "traefik.port=80"
+      - "traefik.enable=true"
+    networks:
+      - default
+    env_file:
+      - tmpconfig.env
+    volumes:
+      - ../default-config.yml:/config.yml:ro
+
+  traefik:
+    image: traefik:1.7.4
+    labels:
+      - "traefik.frontend.auth.forward.address=http://fpa/auth"
+      - "traefik.frontend.rule=PathPrefixStrip:/traefik"
+      - "traefik.port=8080"
+      - "traefik.enable=true"
+    networks:
+     - default    
+    volumes:
+     - "/var/run/docker.sock:/var/run/docker.sock:ro"
+     - "./traefik.toml:/traefik.toml:ro"
+    command: -c /traefik.toml
+    ports:
+      - "80:80"
+
+  whoami:
+    image: containous/whoami:v1.0.1
+    labels:
+      - "traefik.frontend.auth.forward.address=http://fpa/auth"
+      - "traefik.frontend.auth.forward.authResponseHeaders=X-Forwarded-User,X-Forwarded-Email,X-Forwarded-Groups"
+      - "traefik.frontend.rule=PathPrefixStrip:/whoami"
+      - "traefik.port=80"
+      - "traefik.enable=true"
+    networks:
+      - default
+  
+  dex:
+    image: quay.io/dexidp/dex:v2.15.0
+    networks:
+      - default
+    ports:
+      - "5556:5556"
+      - "5558:5558"
+    volumes:
+      - "./dex-config.yml:/dex-config.yml:ro"
+    command: "serve /dex-config.yml"
+
+  ldap-test:
+    image: rroemhild/test-openldap
+    networks:
+      - default

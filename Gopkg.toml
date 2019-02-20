@@ -45,6 +45,10 @@
   name = "github.com/kelseyhightower/envconfig"
   version = "v1.3.0"
 
+[[constraint]]
+  name = "github.com/coreos/go-oidc"
+  version = "v2.0.0"
+
 # --------------------
 # for testing
 [[constraint]]

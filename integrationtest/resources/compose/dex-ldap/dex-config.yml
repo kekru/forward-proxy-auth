@@ -1,0 +1,61 @@
+issuer: http://192.168.0.150:5556/dex
+storage:
+  type: sqlite3
+  config:
+    file: dex.db
+web:
+  http: 0.0.0.0:5556
+
+connectors:
+- type: ldap
+  name: OpenLDAP
+  id: ldap
+  config:
+    host: ldap-test:389
+    insecureNoSSL: true
+
+    bindDN: cn=admin,dc=planetexpress,dc=com
+    bindPW: GoodNewsEveryone
+
+    usernamePrompt: username
+
+    userSearch:
+      baseDN: ou=people,dc=planetexpress,dc=com
+      #filter: "(objectClass=person)"
+      username: uid
+      # "DN" (case sensitive) is a special attribute name. It indicates that
+      # this value should be taken from the entity's DN not an attribute on
+      # the entity.
+      idAttr: uid
+      emailAttr: mail
+      nameAttr: uid
+
+    groupSearch:
+      baseDN: ou=people,dc=planetexpress,dc=com
+      #filter: "(objectClass=groupOfNames)"
+
+      # A user is a member of a group when their DN matches
+      # the value of a "member" attribute on the group entity.
+      userAttr: DN
+      groupAttr: member
+
+      # The group name should be the "cn" value.
+      nameAttr: cn
+
+logger:
+  level: "debug"
+  format: "text" # can also be "json"
+
+oauth2:
+  responseTypes: ["code", "token", "id_token"]
+  skipApprovalScreen: true
+
+telemetry:
+  http: 0.0.0.0:5558
+
+staticClients:
+- id: example-app
+  redirectURIs:
+  - 'http://192.168.0.150/fpa/callback'
+  name: 'Example App'
+  secret: ZXhhbXBsZS1hcHAtc2VjcmV0
