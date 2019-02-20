@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
@@ -12,7 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kekru/forward-proxy-auth/authenticator"
+	"github.com/kekru/forward-proxy-auth/authenticator/credentialauth"
+	"github.com/kekru/forward-proxy-auth/authenticator/openid"
 	"github.com/kekru/forward-proxy-auth/jwtutil"
 	"github.com/kekru/forward-proxy-auth/model"
 
@@ -22,14 +22,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/kelseyhightower/envconfig"
 )
-
-type Authenticator interface {
-	Authenticate(username string, password string) (user *model.User, err error)
-}
-
-type LoginFormData struct {
-	LoginUri string
-}
 
 type ForwardAuthConfig struct {
 	Version string `yaml:"Version"`
@@ -66,16 +58,16 @@ type ForwardAuthConfig struct {
 	} `yaml:"Jwt"`
 
 	Authenticator struct {
-		Method   string                      `yaml:"Method"`
-		Ldap     *authenticator.LdapAuth     `yaml:"Ldap"`
-		Textfile *authenticator.TextfileAuth `yaml:"Textfile"`
-		OpenId   *authenticator.OpenIdAuth   `yaml:"OpenId"`
+		Method   string                                 `yaml:"Method"`
+		Ldap     *credentialauth.CredentialAuthLdap     `yaml:"Ldap"`
+		Textfile *credentialauth.CredentialAuthTextfile `yaml:"Textfile"`
+		OpenId   *openid.OpenIdAuth                     `yaml:"OpenId"`
 	} `yaml:"Authenticator"`
 }
 
 var jwtUtil *jwtutil.JwtUtil
-var authenticators []Authenticator
 var config *ForwardAuthConfig
+var auth model.AuthService
 
 func main() {
 	log.SetLevel(log.DebugLevel)
@@ -104,29 +96,46 @@ func main() {
 		Issuer:         config.Jwt.Issuer,
 	}
 
-	authenticators = append(authenticators, config.Authenticator.Ldap)
-
-	log.SetLevel(log.DebugLevel)
-
-	config.Authenticator.OpenId = &authenticator.OpenIdAuth{
-		ClientID:     "example-app",
-		ClientSecret: "ZXhhbXBsZS1hcHAtc2VjcmV0",
-		ProviderURL:  "http://192.168.0.150:5556/dex",
-		RedirectURL:  "http://192.168.0.150/fpa/callback",
-	}
-	config.Authenticator.OpenId.Init()
+	var authenticators []model.CredentialAuthenticator
 
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/auth", handleAuth)
-	router.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
-		token, expiryTime, err := config.Authenticator.OpenId.HandleCallback(w, r)
-		if err != nil {
-			http.Error(w, "error occured "+err.Error(), http.StatusInternalServerError)
-			return
+
+	method := config.Authenticator.Method
+	if method == "basic" {
+		authenticators = append(authenticators, config.Authenticator.Ldap)
+
+		auth = &credentialauth.CredentialAuth{
+			CredentialProvider:      &credentialauth.BasicAuthProvider{},
+			CredentialAuthenticator: authenticators,
+			JwtUtil:                 jwtUtil,
 		}
-		writeResponseToken(token, expiryTime, w)
-		w.WriteHeader(http.StatusOK)
-	})
+	} else if method == "htmlform" {
+		authenticators = append(authenticators, config.Authenticator.Ldap)
+
+		auth = &credentialauth.CredentialAuth{
+			CredentialProvider:      &credentialauth.HtmlFormProvider{},
+			CredentialAuthenticator: authenticators,
+			JwtUtil:                 jwtUtil,
+		}
+
+	} else if method == "openid" {
+
+		openIdAuth := &openid.OpenIdAuth{
+			ClientID:     "example-app",
+			ClientSecret: "ZXhhbXBsZS1hcHAtc2VjcmV0",
+			ProviderURL:  "http://192.168.0.150:5556/dex",
+			RedirectURL:  "http://192.168.0.150/fpa/callback",
+		}
+		auth = openIdAuth
+		openIdAuth.Init()
+		router.HandleFunc("/callback", handleAuth)
+
+	} else {
+		log.Fatalf("Unknown authentication method: %s", method)
+	}
+
+	log.SetLevel(log.DebugLevel)
 
 	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(config.Server.Port), router))
 }
@@ -187,7 +196,7 @@ func extractUserFromToken(r *http.Request) (user *model.User, expiryTime time.Ti
 	for _, cookieName := range config.Header.TokenCookie.Names {
 		cookieToken, err := r.Cookie(cookieName)
 		if err == nil {
-			user, expiryTime, err := validateToken(cookieToken.Value)
+			user, expiryTime, err := auth.ValidateToken(cookieToken.Value)
 			if err == nil {
 				return user, expiryTime, err
 			}
@@ -197,7 +206,7 @@ func extractUserFromToken(r *http.Request) (user *model.User, expiryTime time.Ti
 	for _, headerName := range config.Header.TokenHeaders {
 		headerValue := r.Header.Get(headerName)
 		if len(headerValue) > 0 {
-			user, expiryTime, err := validateToken(headerValue)
+			user, expiryTime, err := auth.ValidateToken(headerValue)
 
 			if err == nil {
 				return user, expiryTime, err
@@ -206,17 +215,6 @@ func extractUserFromToken(r *http.Request) (user *model.User, expiryTime time.Ti
 	}
 
 	return nil, time.Time{}, errors.New("No valid token found")
-}
-
-func validateToken(tokenString string) (user *model.User, expiryTime time.Time, err error) {
-	method := config.Authenticator.Method
-	if method == "basic" || method == "htmlform" {
-		return jwtUtil.ValidateToken(tokenString)
-	} else if method == "openid" {
-		return config.Authenticator.OpenId.ValidateToken(tokenString)
-	} else {
-		panic("Unknown authentication method: " + method)
-	}
 }
 
 func writeResponseToken(token string, expiryTime time.Time, w http.ResponseWriter) {
@@ -270,113 +268,31 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 		log.Debugf("Request\n%s", string(requestDump))
 	}
 
-	// try to login by basic auth credentials
-	user, err = login(r)
+	user, token, expiryTime, err := auth.EvaluateLogin(r)
 
-	forwardedUri := strings.TrimSpace(r.URL.Query().Get("redirect"))
-	if len(forwardedUri) == 0 {
-		forwardedUri = getForwardedUri(r)
-	}
+	// TODO
+	//	forwardedUri := strings.TrimSpace(r.URL.Query().Get("redirect"))
+	//	if len(forwardedUri) == 0 {
+	//		forwardedUri = getForwardedUri(r)
+	//	}
 
 	if err != nil {
 		// no valid credentials, show new basic auth dialog
 		log.Debugf("Could not login. %s", err)
-
-		method := config.Authenticator.Method
-		if method == "basic" {
-			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted Area"`)
-			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		} else if method == "htmlform" {
-			writeLoginpage(w, forwardedUri)
-		} else if method == "openid" {
-			config.Authenticator.OpenId.RedirectToOpenIdProvider(w, r)
-			return
-		} else {
-			log.Errorf("Unknown authentication method: %s", method)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}
-		return
-	}
-
-	// create token for authenticated user
-	token, expiryTime, err := jwtUtil.CreateToken(user)
-
-	if err != nil {
-		log.Errorf("Could not create token for User %s, %s", user.Name, err)
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		auth.ServeLoginform(w, r)
 		return
 	}
 
 	// return token in cookie
 	writeResponseToken(token, expiryTime, w)
 
+	// TODO
 	// redirect on the originally requested uri
-	if len(forwardedUri) > 0 {
-		log.Debugf("Sending redirect to %s for user %s ", forwardedUri, user.Name)
-		http.Redirect(w, r, forwardedUri, http.StatusSeeOther)
-	} else {
-		writeUserResponse(w, user, expiryTime)
-	}
+	//if len(forwardedUri) > 0 {
+	//		log.Debugf("Sending redirect to %s for user %s ", forwardedUri, user.Name)
+	//		http.Redirect(w, r, forwardedUri, http.StatusSeeOther)
+	//	} else {
+	writeUserResponse(w, user, expiryTime)
+	//	}
 
-}
-
-func login(r *http.Request) (user *model.User, err error) {
-	var username, password string
-
-	method := config.Authenticator.Method
-	if method == "basic" {
-		var authOK bool
-		username, password, authOK = r.BasicAuth()
-
-		if !authOK {
-			err = errors.New("no basic auth credentials")
-			return
-		}
-	} else if method == "htmlform" {
-		err = r.ParseForm()
-		if err != nil {
-			return
-		}
-		username = strings.TrimSpace(r.Form.Get("username"))
-		password = strings.TrimSpace(r.Form.Get("password"))
-		if len(username) == 0 && len(password) == 0 {
-			err = errors.New("username or password of html form was empty")
-			return
-		}
-
-	} else {
-		err = errors.New("Unknown authentication method: " + method)
-		return
-	}
-
-	for _, auth := range authenticators {
-		user, err = auth.Authenticate(username, password)
-		if err == nil {
-			return
-		} else {
-			log.Debug(err)
-		}
-	}
-
-	err = errors.New("No user with given username and password found. Username: " + username)
-	return
-}
-
-func writeLoginpage(w http.ResponseWriter, forwardedUri string) {
-
-	t, err := template.ParseFiles("static/login.html")
-	if err != nil {
-		log.Errorf("could not read static/login.html, %s", err)
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(http.StatusUnauthorized)
-
-	templateData := &LoginFormData{
-		LoginUri: config.Server.Uri + "/auth?redirect=" + forwardedUri,
-	}
-
-	t.Execute(w, templateData)
 }

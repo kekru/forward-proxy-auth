@@ -1,4 +1,4 @@
-package authenticator
+package openid
 
 import (
 	"errors"
@@ -58,29 +58,6 @@ func (auth *OpenIdAuth) Init() {
 
 }
 
-func (auth *OpenIdAuth) RedirectToOpenIdProvider(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, auth.config.AuthCodeURL(state), http.StatusFound)
-}
-
-func (auth *OpenIdAuth) HandleCallback(w http.ResponseWriter, r *http.Request) (tokenString string, expiryTime time.Time, err error) {
-	if r.URL.Query().Get("state") != state {
-		return "", time.Time{}, errors.New("state did not match")
-	}
-
-	oauth2Token, err := auth.config.Exchange(auth.ctx, r.URL.Query().Get("code"))
-	if err != nil {
-		return "", time.Time{}, err
-	}
-	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
-	if !ok {
-		return "", time.Time{}, errors.New("no id_token field in oauth2 token")
-	}
-
-	_, expiryTime, err = auth.ValidateToken(rawIDToken)
-
-	return rawIDToken, expiryTime, err
-}
-
 func (auth *OpenIdAuth) ValidateToken(tokenString string) (user *model.User, expiryTime time.Time, err error) {
 
 	idToken, err := auth.verifier.Verify(auth.ctx, tokenString)
@@ -95,4 +72,27 @@ func (auth *OpenIdAuth) ValidateToken(tokenString string) (user *model.User, exp
 	}
 
 	return user, idToken.Expiry, nil
+}
+
+func (auth *OpenIdAuth) EvaluateLogin(r *http.Request) (user *model.User, tokenString string, expiryTime time.Time, err error) {
+	if r.URL.Query().Get("state") != state {
+		return nil, "", time.Time{}, errors.New("state did not match")
+	}
+
+	oauth2Token, err := auth.config.Exchange(auth.ctx, r.URL.Query().Get("code"))
+	if err != nil {
+		return nil, "", time.Time{}, err
+	}
+	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
+	if !ok {
+		return nil, "", time.Time{}, errors.New("no id_token field in oauth2 token")
+	}
+
+	user, expiryTime, err = auth.ValidateToken(rawIDToken)
+
+	return user, rawIDToken, expiryTime, err
+}
+
+func (auth *OpenIdAuth) ServeLoginform(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, auth.config.AuthCodeURL(state), http.StatusFound)
 }

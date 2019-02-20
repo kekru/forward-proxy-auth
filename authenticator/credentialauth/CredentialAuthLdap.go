@@ -1,4 +1,4 @@
-package authenticator
+package credentialauth
 
 import (
 	"crypto/tls"
@@ -11,7 +11,7 @@ import (
 	"gopkg.in/ldap.v2"
 )
 
-type LdapAuth struct {
+type CredentialAuthLdap struct {
 	LdapURL        string `yaml:"LdapURL"`
 	BaseDN         string `yaml:"BaseDN"`
 	BindDN         string `yaml:"BindDN"`
@@ -27,7 +27,7 @@ type LdapAuth struct {
 	connection *ldap.Conn
 }
 
-func (ldapAuth *LdapAuth) Authenticate(username string, password string) (user *model.User, err error) {
+func (ldapAuth *CredentialAuthLdap) Authenticate(username string, password string) (user *model.User, err error) {
 
 	if ldapAuth.isEmpty(ldapAuth.BindDN) || ldapAuth.isEmpty(ldapAuth.BindDNPassword) ||
 		ldapAuth.isEmpty(username) || ldapAuth.isEmpty(password) {
@@ -129,11 +129,11 @@ func (ldapAuth *LdapAuth) Authenticate(username string, password string) (user *
 	return
 }
 
-func (ldapAuth *LdapAuth) isEmpty(value string) bool {
+func (ldapAuth *CredentialAuthLdap) isEmpty(value string) bool {
 	return len(strings.TrimSpace(value)) == 0
 }
 
-func (ldapAuth *LdapAuth) close() {
+func (ldapAuth *CredentialAuthLdap) close() {
 	if ldapAuth.connection != nil {
 		ldapAuth.connection.Close()
 		ldapAuth.connection = nil
