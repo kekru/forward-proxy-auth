@@ -1,11 +1,12 @@
 package authenticator
 
 import (
-	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/kekru/forward-proxy-auth/model"
 	log "github.com/sirupsen/logrus"
 
 	oidc "github.com/coreos/go-oidc"
@@ -61,45 +62,37 @@ func (auth *OpenIdAuth) RedirectToOpenIdProvider(w http.ResponseWriter, r *http.
 	http.Redirect(w, r, auth.config.AuthCodeURL(state), http.StatusFound)
 }
 
-func (auth *OpenIdAuth) HandleCallback(w http.ResponseWriter, r *http.Request) {
+func (auth *OpenIdAuth) HandleCallback(w http.ResponseWriter, r *http.Request) (tokenString string, expiryTime time.Time, err error) {
 	if r.URL.Query().Get("state") != state {
-		http.Error(w, "state did not match", http.StatusBadRequest)
-		return
+		return "", time.Time{}, errors.New("state did not match")
 	}
 
 	oauth2Token, err := auth.config.Exchange(auth.ctx, r.URL.Query().Get("code"))
 	if err != nil {
-		http.Error(w, "Failed to exchange token: "+err.Error(), http.StatusInternalServerError)
-		return
+		return "", time.Time{}, err
 	}
 	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
 	if !ok {
-		http.Error(w, "No id_token field in oauth2 token.", http.StatusInternalServerError)
-		return
+		return "", time.Time{}, errors.New("no id_token field in oauth2 token")
 	}
-	idToken, err := auth.verifier.Verify(auth.ctx, rawIDToken)
+
+	_, expiryTime, err = auth.ValidateToken(rawIDToken)
+
+	return rawIDToken, expiryTime, err
+}
+
+func (auth *OpenIdAuth) ValidateToken(tokenString string) (user *model.User, expiryTime time.Time, err error) {
+
+	idToken, err := auth.verifier.Verify(auth.ctx, tokenString)
 	if err != nil {
-		http.Error(w, "Failed to verify ID Token: "+err.Error(), http.StatusInternalServerError)
-		return
+		return nil, time.Time{}, err
 	}
-	log.Printf("idToken %s", idToken)
 
-	//oauth2Token.AccessToken = "*REDACTED*"
-
-	resp := struct {
-		OAuth2Token   *oauth2.Token
-		IDTokenClaims *json.RawMessage // ID Token payload is just JSON.
-	}{oauth2Token, new(json.RawMessage)}
-
-	if err := idToken.Claims(&resp.IDTokenClaims); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	data, err := json.MarshalIndent(resp, "", "    ")
+	user = &model.User{}
+	err = idToken.Claims(&user) // fill user data. Works, because fields of User match the OpenId fields
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, time.Time{}, err
 	}
-	w.Write(data)
 
+	return user, idToken.Expiry, nil
 }

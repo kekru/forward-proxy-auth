@@ -7,6 +7,7 @@ services:
       - FPA_AUTHENTICATOR_METHOD=openid
       - FPA_SERVER_URI=/fpa
       - FPA_SERVER_PORT=80
+      - FPA_HEADER_TOKENCOOKIE_DOMAIN=192.168.0.150
     labels:
       - "traefik.frontend.rule=PathPrefixStrip:/fpa"
       - "traefik.port=80"

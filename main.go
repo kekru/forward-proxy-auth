@@ -118,7 +118,15 @@ func main() {
 
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/auth", handleAuth)
-	router.HandleFunc("/callback", config.Authenticator.OpenId.HandleCallback)
+	router.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+		token, expiryTime, err := config.Authenticator.OpenId.HandleCallback(w, r)
+		if err != nil {
+			http.Error(w, "error occured "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeResponseToken(token, expiryTime, w)
+		w.WriteHeader(http.StatusOK)
+	})
 
 	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(config.Server.Port), router))
 }
@@ -179,7 +187,7 @@ func extractUserFromToken(r *http.Request) (user *model.User, expiryTime time.Ti
 	for _, cookieName := range config.Header.TokenCookie.Names {
 		cookieToken, err := r.Cookie(cookieName)
 		if err == nil {
-			user, expiryTime, err := jwtUtil.ValidateToken(cookieToken.Value)
+			user, expiryTime, err := validateToken(cookieToken.Value)
 			if err == nil {
 				return user, expiryTime, err
 			}
@@ -189,7 +197,7 @@ func extractUserFromToken(r *http.Request) (user *model.User, expiryTime time.Ti
 	for _, headerName := range config.Header.TokenHeaders {
 		headerValue := r.Header.Get(headerName)
 		if len(headerValue) > 0 {
-			user, expiryTime, err := jwtUtil.ValidateToken(headerValue)
+			user, expiryTime, err := validateToken(headerValue)
 
 			if err == nil {
 				return user, expiryTime, err
@@ -198,6 +206,17 @@ func extractUserFromToken(r *http.Request) (user *model.User, expiryTime time.Ti
 	}
 
 	return nil, time.Time{}, errors.New("No valid token found")
+}
+
+func validateToken(tokenString string) (user *model.User, expiryTime time.Time, err error) {
+	method := config.Authenticator.Method
+	if method == "basic" || method == "htmlform" {
+		return jwtUtil.ValidateToken(tokenString)
+	} else if method == "openid" {
+		return config.Authenticator.OpenId.ValidateToken(tokenString)
+	} else {
+		panic("Unknown authentication method: " + method)
+	}
 }
 
 func writeResponseToken(token string, expiryTime time.Time, w http.ResponseWriter) {
@@ -271,6 +290,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 			writeLoginpage(w, forwardedUri)
 		} else if method == "openid" {
 			config.Authenticator.OpenId.RedirectToOpenIdProvider(w, r)
+			return
 		} else {
 			log.Errorf("Unknown authentication method: %s", method)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
