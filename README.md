@@ -9,8 +9,13 @@ This is still work in progress and it is my first project in golang.
 ## simple all in one service
 + user authentication against LDAP and plain text file
 + create JWTs, storing in cookies
-+ explicitly no OAuth/OpenId connect workflow, no large configuration of authentication providers 
++ explicitly no OAuth/OpenId connect workflow, no large configuration of authentication providers  
+  (Update: OpenId Connect Support in Branch `oidc`)
 + aims to be a simple and only basic SSO solution for small Docker Swarm clusters
+
+# Usage examples
+
+See [integrationtest/resources/compose](integrationtest/resources/compose) for usage examples.
 
 
 # Build and run
